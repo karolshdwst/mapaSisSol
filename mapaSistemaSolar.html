@@ -165,7 +165,7 @@
             <select id="shadowQuality" onchange="changeShadowQuality()">
                 <option value="high">Alta (4096px)</option>
                 <option value="medium">Media (2048px)</option>
-                <option value="low">Baja (1024px)</option>
+                    <option value="low" selected>Baja (1024px)</option>
                 <option value="ultra">Ultra (8192px)</option>
             </select>
             
@@ -355,8 +355,13 @@
 
     textureLoader = new THREE.TextureLoader();
 
+
     createSolarSystem();
     createLights();
+    // Aplicar calidad de sombras por defecto (baja)
+    if (typeof changeShadowQuality === 'function') {
+        changeShadowQuality();
+    }
     createStarField();
     setupEvents();
 
