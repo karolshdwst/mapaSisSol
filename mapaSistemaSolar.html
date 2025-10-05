@@ -37,16 +37,27 @@
             font-size: 18px;
         }
         
-        #controls {
+        #controls-container {
             position: absolute;
             top: 10px;
             right: 10px;
+            z-index: 1000;
+            transform: translateX(0);
+            transition: transform 0.3s ease;
+        }
+        
+        #controls-container.hidden {
+            transform: translateX(calc(100% - 30px));
+        }
+        
+        #controls {
             background: rgba(0,0,0,0.8);
             color: white;
             padding: 15px;
-            border-radius: 8px;
-            z-index: 1000;
+            border-radius: 8px 0 0 8px;
             border: 1px solid #4af;
+            border-right: none;
+            width: 200px;
         }
         
         #controls button, #controls select {
@@ -61,6 +72,33 @@
         }
         
         #controls button:hover {
+            background: #4af;
+            color: black;
+        }
+        
+        #toggle-controls {
+            position: absolute;
+            top: 50%;
+            left: -30px;
+            transform: translateY(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 8px;
+            border-radius: 8px 0 0 8px;
+            border: 1px solid #4af;
+            border-right: none;
+            cursor: pointer;
+            font-size: 14px;
+            width: 30px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            z-index: 1001;
+        }
+        
+        #toggle-controls:hover {
             background: #4af;
             color: black;
         }
@@ -124,9 +162,18 @@
             <p>• Click: Seleccionar planeta</p>
             <p>• Doble click: Enfocar planeta</p>
             <p>• Hover: Ver coordenadas en vivo</p>
+            <p>• Tecla H: Ocultar/Mostrar controles</p>
+            <p>• ◀: Panel de configuración</p>
         </div>
         
-        <div id="controls">
+        <!-- Contenedor de controles con botón deslizante -->
+        <div id="controls-container">
+            <!-- Botón para ocultar/mostrar controles -->
+            <div id="toggle-controls" onclick="toggleControlsVisibility()" title="Ocultar/Mostrar controles">
+                ◀
+            </div>
+            
+            <div id="controls">
             <h3 style="margin: 0 0 10px 0; color: #4af;">Controles</h3>
             
             <button onclick="resetView()">Vista General</button>
@@ -166,6 +213,7 @@
                 <option value="urano">Urano</option>
                 <option value="neptuno">Neptuno</option>
             </select>
+            </div>
         </div>
         
         <div id="planet-info">
@@ -623,6 +671,13 @@
             // Control de velocidad
             document.getElementById('speedSlider').addEventListener('input', function(e) {
                 animationSpeed = parseFloat(e.target.value);
+            });
+            
+            // Event listener para ocultar/mostrar controles con tecla H
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'h' || event.key === 'H') {
+                    toggleControlsVisibility();
+                }
             });
             
             // Inicializar elemento de coordenadas
@@ -1763,6 +1818,23 @@
                 hideCoordinates();
             }
             console.log('🎯 Modo coordenadas en vivo:', coordinatesMode ? 'ACTIVADO' : 'DESACTIVADO');
+        }
+
+        function toggleControlsVisibility() {
+            const controlsContainer = document.getElementById('controls-container');
+            const toggleButton = document.getElementById('toggle-controls');
+            
+            if (controlsContainer.classList.contains('hidden')) {
+                // Mostrar controles
+                controlsContainer.classList.remove('hidden');
+                toggleButton.innerHTML = '◀';
+                toggleButton.title = 'Ocultar controles';
+            } else {
+                // Ocultar controles
+                controlsContainer.classList.add('hidden');
+                toggleButton.innerHTML = '▶';
+                toggleButton.title = 'Mostrar controles';
+            }
         }
 
         function changeShadowQuality() {
