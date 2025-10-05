@@ -28,7 +28,6 @@
             border-radius: 8px;
             z-index: 1000;
             max-width: 300px;
-            border: 1px solid #4af;
         }
         
         #info h2 { 
@@ -103,20 +102,6 @@
             color: black;
         }
         
-        #planet-info {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 15px;
-            border-radius: 8px;
-            z-index: 1000;
-            max-width: 400px;
-            border: 1px solid #4af;
-            display: none;
-        }
-        
         .loading {
             position: absolute;
             top: 50%;
@@ -155,16 +140,6 @@
         <div id="coordinates-display"></div>
         
         <div id="info">
-            <h2>Sistema Solar 3D</h2>
-            <p><strong>Controles:</strong></p>
-            <p>• Arrastrar: Rotar vista</p>
-            <p>• Scroll: Zoom</p>
-            <p>• Click: Seleccionar planeta</p>
-            <p>• Doble click: Enfocar planeta</p>
-            <p>• Click derecho: Agregar pin/anotación</p>
-            <p>• Hover: Ver coordenadas en vivo</p>
-            <p>• Tecla H: Ocultar/Mostrar controles</p>
-            <p>• ◀: Panel de configuración</p>
         </div>
         
         <!-- Contenedor de controles con botón deslizante -->
@@ -178,12 +153,10 @@
             <h3 style="margin: 0 0 10px 0; color: #4af;">Controles</h3>
             
             <button onclick="resetView()">Vista General</button>
-            <button onclick="toggleAnimation()">⏯️ Pausar/Reanudar</button>
-            <button onclick="toggleOrbits()">🔄 Mostrar Órbitas</button>
-            <button onclick="toggleLabels()">🏷️ Mostrar Nombres</button>
-            <button onclick="toggleCoordinatesMode()">🎯 Coordenadas en Vivo</button>
-            <button onclick="showPinpointsInfo()">📍 Info de Pins</button>
-            <button onclick="clearAllPinpoints()">🗑️ Limpiar Pins</button>
+            <button onclick="toggleAnimation()">Pausar/Reanudar</button>
+            <button onclick="toggleOrbits()">Mostrar Órbitas</button>
+            <button onclick="toggleLabels()">Mostrar Nombres</button>
+            <button onclick="toggleCoordinatesMode()">Coordenadas en Vivo</button>
             
             <label style="display: block; margin-top: 10px;">Velocidad:</label>
             <input type="range" id="speedSlider" min="0" max="2" value="0.25" step="0.01" style="width: 100%;">
@@ -217,11 +190,6 @@
                 <option value="neptuno">Neptuno</option>
             </select>
             </div>
-        </div>
-        
-        <div id="planet-info">
-            <h3 id="planet-name"></h3>
-            <div id="planet-details"></div>
         </div>
     </div>
 
@@ -374,8 +342,9 @@
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.shadowMap.autoUpdate = true;
-    renderer.outputEncoding = THREE.sRGBEncoding;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    // Comentar temporalmente para diagnóstico
+    // renderer.outputColorSpace = THREE.SRGBColorSpace;
+    // renderer.toneMapping = THREE.ACESFilmicToneMapping;
     document.getElementById('container').appendChild(renderer.domElement);
 
     controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -408,15 +377,11 @@
             if (planetData.sol.texture) {
                 const sunTexture = textureLoader.load(planetData.sol.texture);
                 sunMaterial = new THREE.MeshBasicMaterial({ 
-                    map: sunTexture,
-                    emissive: planetData.sol.color,
-                    emissiveIntensity: 0.3
+                    map: sunTexture
                 });
             } else {
                 sunMaterial = new THREE.MeshBasicMaterial({ 
-                    color: planetData.sol.color,
-                    emissive: planetData.sol.color,
-                    emissiveIntensity: 0.3
+                    color: planetData.sol.color
                 });
             }
             
@@ -730,7 +695,57 @@
         
         if (newAnnotation !== null) {
             pinpoint.annotation = newAnnotation;
-            pinpoint.label.querySelector('div:nth-child(3)').innerHTML = newAnnotation || '<em>Sin anotación</em>';
+            
+            // Recrear los contenidos básico y expandido
+            const basicContent = `
+                <div style="font-weight: bold; font-size: 11px;">${pinpoint.planet.userData.name}</div>
+                <div style="font-family: monospace; font-size: 10px; color: #4af; margin-top: 2px;">
+                    ${formatCoordinate(pinpoint.latitude, 'lat')}<br>
+                    ${formatCoordinate(pinpoint.longitude, 'lon')}
+                </div>
+                <div style="margin-top: 3px; font-size: 10px; max-height: 40px; overflow: hidden; text-overflow: ellipsis;">
+                    ${newAnnotation || '<em>Sin anotación</em>'}
+                </div>
+            `;
+            
+            const expandedContent = `
+                <div style="font-weight: bold; font-size: 11px;">${pinpoint.planet.userData.name}</div>
+                <div style="font-family: monospace; font-size: 10px; color: #4af; margin-top: 2px;">
+                    ${formatCoordinate(pinpoint.latitude, 'lat')}<br>
+                    ${formatCoordinate(pinpoint.longitude, 'lon')}
+                </div>
+                <div style="margin-top: 3px; font-size: 10px;">
+                    ${newAnnotation || '<em>Sin anotación</em>'}
+                </div>
+                <div style="margin-top: 6px; text-align: center;">
+                    <button onclick="editPinpoint(${pinpointId})" style="padding: 3px 6px; background: #4af; border: none; border-radius: 3px; cursor: pointer; font-size: 10px;">Editar</button>
+                    <button onclick="deletePinpoint(${pinpointId})" style="margin-left: 4px; padding: 3px 6px; background: #f44; border: none; border-radius: 3px; cursor: pointer; font-size: 10px;">Eliminar</button>
+                </div>
+            `;
+            
+            // Actualizar el contenido según el estado actual (hover o normal)
+            if (pinpoint.label.matches(':hover')) {
+                pinpoint.label.innerHTML = expandedContent;
+                pinpoint.label.isBasicContent = false;
+            } else {
+                pinpoint.label.innerHTML = basicContent;
+                pinpoint.label.isBasicContent = true;
+            }
+            
+            // Reconfigurar los event listeners
+            pinpoint.label.onmouseenter = function() {
+                this.innerHTML = expandedContent;
+                this.isBasicContent = false;
+                this.style.maxWidth = '200px';
+                this.style.padding = '8px 12px';
+            };
+            
+            pinpoint.label.onmouseleave = function() {
+                this.innerHTML = basicContent;
+                this.isBasicContent = true;
+                this.style.maxWidth = '150px';
+                this.style.padding = '6px 10px';
+            };
         }
     }
 
@@ -766,6 +781,71 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
+        // Función para seleccionar un pinpoint
+        function selectPinpoint(pinpoint) {
+            // Deseleccionar el pinpoint anterior si existe
+            if (selectedPinpoint) {
+                selectedPinpoint.marker.material.emissive = new THREE.Color(0x000000);
+                selectedPinpoint.marker.material.emissiveIntensity = 0.5;
+                
+                // Restaurar tamaño normal de la etiqueta si no está en hover
+                if (!selectedPinpoint.label.matches(':hover')) {
+                    const basicContent = `
+                        <div style="font-weight: bold; font-size: 11px;">${selectedPinpoint.planet.userData.name}</div>
+                        <div style="font-family: monospace; font-size: 10px; color: #4af; margin-top: 2px;">
+                            ${formatCoordinate(selectedPinpoint.latitude, 'lat')}<br>
+                            ${formatCoordinate(selectedPinpoint.longitude, 'lon')}
+                        </div>
+                        <div style="margin-top: 3px; font-size: 10px; max-height: 40px; overflow: hidden; text-overflow: ellipsis;">
+                            ${selectedPinpoint.annotation || '<em>Sin anotación</em>'}
+                        </div>
+                    `;
+                    selectedPinpoint.label.innerHTML = basicContent;
+                    selectedPinpoint.label.isBasicContent = true;
+                    selectedPinpoint.label.style.maxWidth = '150px';
+                    selectedPinpoint.label.style.padding = '6px 10px';
+                    selectedPinpoint.label.style.border = `1px solid ${rgbToHex(selectedPinpoint.color)}`;
+                }
+            }
+            
+            // Seleccionar el nuevo pinpoint
+            selectedPinpoint = pinpoint;
+            
+            if (selectedPinpoint) {
+                // Destacar visualmente el pinpoint seleccionado
+                selectedPinpoint.marker.material.emissive = new THREE.Color(0xffcc00);
+                selectedPinpoint.marker.material.emissiveIntensity = 1.0;
+                
+                // Mostrar la etiqueta en formato expandido
+                const expandedContent = `
+                    <div style="display: flex; align-items: center; margin-bottom: 5px; border-bottom: 1px solid rgba(68,170,255,0.3); padding-bottom: 3px;">
+                        <span style="color: ${rgbToHex(selectedPinpoint.color)}; font-size: 14px; margin-right: 5px;">●</span>
+                        <span style="font-weight: bold; font-size: 12px; text-shadow: 0px 1px 2px rgba(0,0,0,0.5); color: white;">${selectedPinpoint.planet.userData.name}</span>
+                    </div>
+                    <div style="font-family: 'Courier New', monospace; font-size: 10px; color: #4af; margin-top: 3px; background: rgba(0,10,30,0.3); padding: 4px; border-radius: 3px; border-left: 2px solid #4af; text-shadow: 0 1px 1px rgba(0,0,0,0.5);">
+                        ${formatCoordinate(selectedPinpoint.latitude, 'lat')}<br>
+                        ${formatCoordinate(selectedPinpoint.longitude, 'lon')}
+                    </div>
+                    <div style="margin: 5px 0; font-size: 11px; color: #ddd; text-shadow: 0px 1px 1px rgba(0,0,0,0.5); line-height: 1.3;">
+                        ${selectedPinpoint.annotation || '<span style="color: #888; font-style: italic;">Sin anotación</span>'}
+                    </div>
+                    <div style="margin-top: 8px; text-align: center; display: flex; justify-content: space-between;">
+                        <button onclick="editPinpoint(${selectedPinpoint.id})" style="flex: 1; padding: 4px 0; margin-right: 4px; background: linear-gradient(to bottom, #4af, #2288dd); border: none; border-radius: 3px; cursor: pointer; font-size: 10px; color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.3); text-shadow: 0 1px 1px rgba(0,0,0,0.5);">Editar</button>
+                        <button onclick="deletePinpoint(${selectedPinpoint.id})" style="flex: 1; padding: 4px 0; background: linear-gradient(to bottom, #ff5555, #dd2222); border: none; border-radius: 3px; cursor: pointer; font-size: 10px; color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.3); text-shadow: 0 1px 1px rgba(0,0,0,0.5);">Eliminar</button>
+                    </div>
+                `;
+                selectedPinpoint.label.innerHTML = expandedContent;
+                selectedPinpoint.label.isBasicContent = false;
+                
+                // Resaltar la etiqueta
+                selectedPinpoint.label.style.display = 'block';
+                selectedPinpoint.label.style.maxWidth = '200px';
+                selectedPinpoint.label.style.padding = '8px 12px';
+                selectedPinpoint.label.style.border = '2px solid #ffcc00';
+                selectedPinpoint.label.style.boxShadow = '0 0 15px rgba(255,204,0,0.5)';
+            }
+        }
+        
         function onPlanetClick(event) {
             const mouse = new THREE.Vector2();
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -774,7 +854,34 @@
             const raycaster = new THREE.Raycaster();
             raycaster.setFromCamera(mouse, camera);
 
-            // Crear array de objetos incluye planetas y satélites
+            // Primero verificar si se hizo clic en algún pinpoint
+            const pinObjects = pinpoints.map(p => p.marker);
+            const pinIntersects = raycaster.intersectObjects(pinObjects);
+            
+            if (pinIntersects.length > 0) {
+                // Encontrar qué pinpoint se seleccionó
+                const clickedMarker = pinIntersects[0].object;
+                const clickedPinpoint = pinpoints.find(p => p.marker === clickedMarker);
+                
+                if (clickedPinpoint) {
+                    // Si ya está seleccionado, deseleccionarlo
+                    if (selectedPinpoint === clickedPinpoint) {
+                        selectPinpoint(null);
+                    } else {
+                        // Seleccionar el pinpoint
+                        selectPinpoint(clickedPinpoint);
+                    }
+                    return; // Salir para no seleccionar el planeta también
+                }
+            }
+
+            // Comprobar si se hizo clic en un área vacía (background)
+            // Si hay un pinpoint seleccionado, lo deseleccionamos al hacer clic en el fondo
+            if (selectedPinpoint && !event.target.closest('.pinpoint-label')) {
+                selectPinpoint(null);
+            }
+
+            // Si no se hizo clic en un pinpoint, verificar planetas y satélites
             const celestialObjects = [...Object.values(planets)];
             if (moons.luna) {
                 celestialObjects.push(moons.luna);
@@ -810,12 +917,6 @@
         }
 
         function onMouseMove(event) {
-            // Solo mostrar coordenadas si el modo está activado
-            if (!coordinatesMode) {
-                hideCoordinates();
-                return;
-            }
-            
             // Calcular posición del mouse en coordenadas normalizadas
             const mouse = new THREE.Vector2();
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -824,6 +925,33 @@
             // Crear raycaster para detectar intersecciones
             const raycaster = new THREE.Raycaster();
             raycaster.setFromCamera(mouse, camera);
+            
+            // Primero verificar si el ratón está sobre algún pin
+            const pinMarkers = pinpoints.map(p => p.marker);
+            const pinIntersects = raycaster.intersectObjects(pinMarkers);
+            
+            // Resetear el estado del pinpoint hover
+            if (hoveredPinpoint && hoveredPinpoint !== selectedPinpoint) {
+                hoveredPinpoint.marker.material.emissive = new THREE.Color(0x000000);
+            }
+            hoveredPinpoint = null;
+            
+            // Si el mouse está sobre un pin, mostrar la etiqueta
+            if (pinIntersects.length > 0) {
+                const marker = pinIntersects[0].object;
+                const pinpoint = pinpoints.find(p => p.marker === marker);
+                
+                if (pinpoint && pinpoint !== selectedPinpoint) {
+                    hoveredPinpoint = pinpoint;
+                    pinpoint.marker.material.emissive = new THREE.Color(0x555555);
+                }
+            }
+            
+            // Solo mostrar coordenadas si el modo está activado
+            if (!coordinatesMode) {
+                hideCoordinates();
+                return;
+            }
 
             // Verificar intersección con planetas y satélites
             const celestialObjects = [...Object.values(planets)];
@@ -857,6 +985,12 @@
             // Ocultar coordenadas cuando el mouse sale del canvas
             hideCoordinates();
             isShowingCoordinates = false;
+            
+            // Resetear el estado de hover de todos los pines
+            if (hoveredPinpoint && hoveredPinpoint !== selectedPinpoint) {
+                hoveredPinpoint.marker.material.emissive = new THREE.Color(0x000000);
+            }
+            hoveredPinpoint = null;
         }
 
         function showCoordinates(mouseX, mouseY, planetName, coords, locationInfo) {
@@ -981,12 +1115,13 @@
             
             // Crear marcador visual (esfera pequeña)
             const markerGeometry = new THREE.SphereGeometry(planet.userData.radius * 0.05, 16, 16);
-            const markerMaterial = new THREE.MeshBasicMaterial({ 
+            const markerMaterial = new THREE.MeshLambertMaterial({ 
                 color: color,
-                emissive: color,
+                emissive: 0x000000, // Para poder cambiar la emisión cuando se selecciona
                 emissiveIntensity: 0.5
             });
             const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+            marker.userData.isPinMarker = true; // Para identificarlo fácilmente
             pinpointGroup.add(marker);
             
             // Crear "pin" (línea vertical)
@@ -1017,31 +1152,91 @@
             label.className = 'pinpoint-label';
             label.style.cssText = `
                 position: absolute;
-                background: rgba(0,0,0,0.9);
+                background: linear-gradient(to bottom, rgba(15, 30, 60, 0.9), rgba(5, 15, 35, 0.95));
                 color: white;
-                padding: 8px 12px;
-                border-radius: 6px;
+                padding: 6px 10px;
+                border-radius: 8px;
                 border: 1px solid ${rgbToHex(color)};
-                font-size: 12px;
+                font-size: 11px;
                 pointer-events: auto;
                 cursor: pointer;
                 display: none;
                 z-index: 1003;
-                max-width: 200px;
+                max-width: 150px;
                 white-space: pre-wrap;
+                box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5), 0 0 15px rgba(68, 170, 255, 0.2);
+                transition: all 0.25s cubic-bezier(0.19, 1, 0.22, 1);
+                backdrop-filter: blur(4px);
+                text-shadow: 0 1px 1px rgba(0, 0, 0, 0.7);
             `;
-            label.innerHTML = `
-                <div style="font-weight: bold; margin-bottom: 4px;">${planet.userData.name}</div>
-                <div style="font-family: monospace; font-size: 11px; color: #4af;">
+            
+            // Agregar triángulo indicador
+            const triangle = document.createElement('div');
+            triangle.style.cssText = `
+                position: absolute;
+                bottom: -8px;
+                left: 50%;
+                margin-left: -8px;
+                width: 0;
+                height: 0;
+                border-left: 8px solid transparent;
+                border-right: 8px solid transparent;
+                border-top: 8px solid rgba(5, 15, 35, 0.95);
+                z-index: 1004;
+            `;
+            label.appendChild(triangle);
+            
+            // Contenido básico (compacto)
+            const basicContent = `
+                <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                    <span style="color: ${rgbToHex(color)}; font-size: 14px; margin-right: 5px;">●</span>
+                    <span style="font-weight: bold; font-size: 11px; text-shadow: 0px 1px 2px rgba(0,0,0,0.5);">${planet.userData.name}</span>
+                </div>
+                <div style="font-family: 'Courier New', monospace; font-size: 10px; color: #4af; margin-top: 2px; background: rgba(0,10,30,0.3); padding: 3px; border-radius: 3px; border-left: 2px solid #4af; text-shadow: 0 1px 1px rgba(0,0,0,0.5);">
                     ${formatCoordinate(latitude, 'lat')}<br>
                     ${formatCoordinate(longitude, 'lon')}
                 </div>
-                <div style="margin-top: 6px; font-size: 11px;">
-                    ${annotation || '<em>Sin anotación</em>'}
+                <div style="margin-top: 4px; font-size: 10px; max-height: 40px; overflow: hidden; text-overflow: ellipsis; font-style: italic; color: #ccc; text-shadow: 0px 1px 1px rgba(0,0,0,0.5);">
+                    ${annotation || '<span style="color: #888;">Sin anotación</span>'}
                 </div>
-                <button onclick="editPinpoint(${pinpointId})" style="margin-top: 6px; padding: 4px 8px; background: #4af; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">Editar</button>
-                <button onclick="deletePinpoint(${pinpointId})" style="margin-left: 4px; padding: 4px 8px; background: #f44; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">Eliminar</button>
             `;
+            
+            // Contenido expandido con botones (aparece al pasar el ratón)
+            const expandedContent = `
+                <div style="display: flex; align-items: center; margin-bottom: 5px; border-bottom: 1px solid rgba(68,170,255,0.3); padding-bottom: 3px;">
+                    <span style="color: ${rgbToHex(color)}; font-size: 14px; margin-right: 5px;">●</span>
+                    <span style="font-weight: bold; font-size: 12px; text-shadow: 0px 1px 2px rgba(0,0,0,0.5); color: white;">${planet.userData.name}</span>
+                </div>
+                <div style="font-family: 'Courier New', monospace; font-size: 10px; color: #4af; margin-top: 3px; background: rgba(0,10,30,0.3); padding: 4px; border-radius: 3px; border-left: 2px solid #4af; text-shadow: 0 1px 1px rgba(0,0,0,0.5);">
+                    ${formatCoordinate(latitude, 'lat')}<br>
+                    ${formatCoordinate(longitude, 'lon')}
+                </div>
+                <div style="margin: 5px 0; font-size: 11px; color: #ddd; text-shadow: 0px 1px 1px rgba(0,0,0,0.5); line-height: 1.3;">
+                    ${annotation || '<span style="color: #888; font-style: italic;">Sin anotación</span>'}
+                </div>
+                <div style="margin-top: 8px; text-align: center; display: flex; justify-content: space-between;">
+                    <button onclick="editPinpoint(${pinpointId})" style="flex: 1; padding: 4px 0; margin-right: 4px; background: linear-gradient(to bottom, #4af, #2288dd); border: none; border-radius: 3px; cursor: pointer; font-size: 10px; color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.3); text-shadow: 0 1px 1px rgba(0,0,0,0.5);">Editar</button>
+                    <button onclick="deletePinpoint(${pinpointId})" style="flex: 1; padding: 4px 0; background: linear-gradient(to bottom, #ff5555, #dd2222); border: none; border-radius: 3px; cursor: pointer; font-size: 10px; color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.3); text-shadow: 0 1px 1px rgba(0,0,0,0.5);">Eliminar</button>
+                </div>
+            `;
+            
+            // Inicialmente muestra el contenido básico
+            label.innerHTML = basicContent;
+            
+            // Añadir eventos para mostrar/ocultar botones al pasar el ratón
+            label.addEventListener('mouseenter', function() {
+                this.innerHTML = expandedContent;
+                this.style.maxWidth = '200px';
+                this.style.padding = '8px 12px';
+            });
+            
+            label.addEventListener('mouseleave', function() {
+                this.innerHTML = basicContent;
+                this.style.maxWidth = '150px';
+                this.style.padding = '6px 10px';
+            });
+            
+            document.body.appendChild(label);
             document.body.appendChild(label);
             
             // Guardar información del pinpoint
@@ -1067,6 +1262,9 @@
         }
 
         // Actualizar posiciones de etiquetas de pinpoints en pantalla
+        // Variable para rastrear sobre qué pin está el cursor
+        let hoveredPinpoint = null;
+        
         function updatePinpointLabels() {
             pinpoints.forEach(pinpoint => {
                 const worldPosition = new THREE.Vector3();
@@ -1075,7 +1273,7 @@
                 // Proyectar a coordenadas de pantalla
                 const screenPosition = worldPosition.clone().project(camera);
                 
-                // Verificar si está visible
+                // Verificar si está detrás de la cámara
                 if (screenPosition.z > 1) {
                     pinpoint.label.style.display = 'none';
                     return;
@@ -1084,15 +1282,48 @@
                 const x = (screenPosition.x * 0.5 + 0.5) * window.innerWidth;
                 const y = (-screenPosition.y * 0.5 + 0.5) * window.innerHeight;
                 
-                // Mostrar solo si está cerca o seleccionado
-                const distance = camera.position.distanceTo(worldPosition);
-                const shouldShow = distance < 50 || pinpoint === selectedPinpoint;
+                // Actualizar posición aunque esté oculto (para cuando se active)
+                pinpoint.label.style.left = x + 'px';
+                pinpoint.label.style.top = y + 'px';
+                pinpoint.label.style.transform = 'translate(-50%, -100%)';
                 
-                if (shouldShow) {
+                // Solo mostrar la etiqueta si:
+                // 1. Es el pin seleccionado
+                // 2. El cursor está sobre el pin (se activa con raycaster)
+                // 3. O el cursor está sobre la etiqueta (para interacción)
+                const showLabel = 
+                    pinpoint === selectedPinpoint || 
+                    pinpoint === hoveredPinpoint || 
+                    pinpoint.label.matches(':hover');
+                
+                if (showLabel) {
+                    // Asegurarse de que la etiqueta muestra el formato básico si no está en hover
+                    if (!pinpoint.label.matches(':hover') && pinpoint !== selectedPinpoint) {
+                        // Recrear contenido básico
+                        const basicContent = `
+                            <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                                <span style="color: ${rgbToHex(pinpoint.color)}; font-size: 14px; margin-right: 5px;">●</span>
+                                <span style="font-weight: bold; font-size: 11px; text-shadow: 0px 1px 2px rgba(0,0,0,0.5);">${pinpoint.planet.userData.name}</span>
+                            </div>
+                            <div style="font-family: 'Courier New', monospace; font-size: 10px; color: #4af; margin-top: 2px; background: rgba(0,10,30,0.3); padding: 3px; border-radius: 3px; border-left: 2px solid #4af; text-shadow: 0 1px 1px rgba(0,0,0,0.5);">
+                                ${formatCoordinate(pinpoint.latitude, 'lat')}<br>
+                                ${formatCoordinate(pinpoint.longitude, 'lon')}
+                            </div>
+                            <div style="margin-top: 4px; font-size: 10px; max-height: 40px; overflow: hidden; text-overflow: ellipsis; font-style: italic; color: #ccc; text-shadow: 0px 1px 1px rgba(0,0,0,0.5);">
+                                ${pinpoint.annotation || '<span style="color: #888;">Sin anotación</span>'}
+                            </div>
+                        `;
+                        
+                        // Solo actualizar si es necesario para evitar parpadeos
+                        if (!pinpoint.label.isBasicContent) {
+                            pinpoint.label.innerHTML = basicContent;
+                            pinpoint.label.isBasicContent = true;
+                            pinpoint.label.style.maxWidth = '150px';
+                            pinpoint.label.style.padding = '6px 10px';
+                        }
+                    }
+                    
                     pinpoint.label.style.display = 'block';
-                    pinpoint.label.style.left = x + 'px';
-                    pinpoint.label.style.top = y + 'px';
-                    pinpoint.label.style.transform = 'translate(-50%, -100%)';
                 } else {
                     pinpoint.label.style.display = 'none';
                 }
@@ -1712,39 +1943,14 @@
         }
 
         function selectPlanet(planet) {
+            // Solo almacenamos la referencia al planeta seleccionado
             selectedPlanet = planet;
-            const info = document.getElementById('planet-info');
-            const nameEl = document.getElementById('planet-name');
-            const detailsEl = document.getElementById('planet-details');
-
-            nameEl.textContent = planet.userData.name;
             
-            // Información adicional sobre coordenadas según el planeta/satélite
-            let coordinateInfo = '';
-            let distanceInfo = '';
+            // No mostramos ninguna información en la interfaz
+            console.log(`Planeta seleccionado: ${planet.userData.name}`);
             
-            if (planet.userData.name === 'Tierra') {
-                coordinateInfo = '<p><strong>📐 Sistema de coordenadas:</strong> Latitud/Longitud geográficas estándar (WGS84)</p>';
-                distanceInfo = `<p><strong>Distancia al Sol:</strong> ${planet.userData.distance} UA (escala visual)</p>`;
-            } else if (planet.userData.name === 'Luna') {
-                coordinateInfo = '<p><strong>📐 Sistema de coordenadas:</strong> Sistema selenográfico (latitud/longitud lunares)</p>';
-                distanceInfo = `<p><strong>Distancia a la Tierra:</strong> ${planet.userData.distance} unidades (escala visual)</p>`;
-            } else if (planet.userData.name === 'Marte') {
-                coordinateInfo = '<p><strong>📐 Sistema de coordenadas:</strong> Sistema areográfico (latitud/longitud marcianas)</p>';
-                distanceInfo = `<p><strong>Distancia al Sol:</strong> ${planet.userData.distance} UA (escala visual)</p>`;
-            } else {
-                coordinateInfo = '<p><strong>📐 Sistema de coordenadas:</strong> Sistema planetocéntrico (lat/lng planetarias)</p>';
-                distanceInfo = `<p><strong>Distancia al Sol:</strong> ${planet.userData.distance} UA (escala visual)</p>`;
-            }
-            
-            detailsEl.innerHTML = `
-                <p><strong>Info:</strong> ${planet.userData.info}</p>
-                ${distanceInfo}
-                <p><strong>Radio:</strong> ${planet.userData.radius} (escala visual)</p>
-                ${coordinateInfo}
-            `;
-            
-            info.style.display = 'block';
+            // Opcionalmente, podríamos mostrar el nombre en alguna parte de la interfaz
+            // o aplicar un efecto visual al planeta seleccionado
         }
 
         function focusOnPlanet(planet) {
@@ -1837,51 +2043,6 @@
                 controlsContainer.classList.add('hidden');
                 toggleButton.innerHTML = '▶';
                 toggleButton.title = 'Mostrar controles';
-            }
-        }
-
-        function showPinpointsInfo() {
-            if (pinpoints.length === 0) {
-                alert('📍 No hay pins creados.\n\n💡 Haz click derecho sobre cualquier planeta para agregar un pin con anotación.');
-                return;
-            }
-            
-            let info = `📍 PINS CREADOS (${pinpoints.length}):\n\n`;
-            pinpoints.forEach((pin, index) => {
-                const planetName = pin.planet.userData.name || 'Planeta desconocido';
-                const lat = formatCoordinate(pin.latitude, 'lat');
-                const lon = formatCoordinate(pin.longitude, 'lon');
-                info += `${index + 1}. ${planetName}\n`;
-                info += `   📍 ${lat}, ${lon}\n`;
-                info += `   💬 "${pin.annotation}"\n\n`;
-            });
-            
-            info += '💡 Tip: Haz click derecho en cualquier planeta para agregar más pins.';
-            alert(info);
-        }
-
-        function clearAllPinpoints() {
-            if (pinpoints.length === 0) {
-                alert('📍 No hay pins para limpiar.');
-                return;
-            }
-            
-            const confirmDelete = confirm(`🗑️ ¿Estás seguro de que quieres eliminar todos los pins (${pinpoints.length})?`);
-            if (confirmDelete) {
-                // Remover todos los pinpoints de la escena
-                pinpoints.forEach(pin => {
-                    if (pin.mesh && pin.mesh.parent) {
-                        pin.mesh.parent.remove(pin.mesh);
-                    }
-                });
-                
-                // Limpiar el array
-                pinpoints.length = 0;
-                pinpointIdCounter = 0;
-                selectedPinpoint = null;
-                
-                alert('🗑️ Todos los pins han sido eliminados.');
-                console.log('🗑️ Todos los pinpoints han sido eliminados');
             }
         }
 
