@@ -811,6 +811,26 @@
                 this.style.maxWidth = '150px';
                 this.style.padding = '6px 10px';
             };
+            
+            // Enviar mensaje de pinpoint editado al contenedor padre
+            const pinpointEditedMessage = {
+                type: 'pinpointEdited',
+                data: {
+                    id: pinpoint.id,
+                    planetName: pinpoint.planet.userData.name,
+                    planetKey: pinpoint.planetKey,
+                    latitude: pinpoint.latitude,
+                    longitude: pinpoint.longitude,
+                    annotation: newAnnotation,
+                    oldAnnotation: pinpoint.annotation,
+                    coordinates: {
+                        lat: formatCoordinate(pinpoint.latitude, 'lat'),
+                        lng: formatCoordinate(pinpoint.longitude, 'lon')
+                    }
+                }
+            };
+            
+            sendMessageToParent(pinpointEditedMessage);
         }
     }
 
@@ -830,6 +850,25 @@
         
         // Remover etiqueta
         document.body.removeChild(pinpoint.label);
+        
+        // Enviar mensaje de pinpoint eliminado al contenedor padre
+        const pinpointDeletedMessage = {
+            type: 'pinpointDeleted',
+            data: {
+                id: pinpoint.id,
+                planetName: pinpoint.planet.userData.name,
+                planetKey: pinpoint.planetKey,
+                latitude: pinpoint.latitude,
+                longitude: pinpoint.longitude,
+                annotation: pinpoint.annotation,
+                coordinates: {
+                    lat: formatCoordinate(pinpoint.latitude, 'lat'),
+                    lng: formatCoordinate(pinpoint.longitude, 'lon')
+                }
+            }
+        };
+        
+        sendMessageToParent(pinpointDeletedMessage);
         
         // Remover del array
         pinpoints.splice(index, 1);
@@ -908,6 +947,34 @@
                 selectedPinpoint.label.style.padding = '8px 12px';
                 selectedPinpoint.label.style.border = '2px solid #ffcc00';
                 selectedPinpoint.label.style.boxShadow = '0 0 15px rgba(255,204,0,0.5)';
+                
+                // Enviar mensaje de pinpoint seleccionado al contenedor padre
+                const pinpointSelectedMessage = {
+                    type: 'pinpointSelected',
+                    data: {
+                        id: selectedPinpoint.id,
+                        planetName: selectedPinpoint.planet.userData.name,
+                        planetKey: selectedPinpoint.planetKey,
+                        latitude: selectedPinpoint.latitude,
+                        longitude: selectedPinpoint.longitude,
+                        annotation: selectedPinpoint.annotation,
+                        color: selectedPinpoint.color,
+                        coordinates: {
+                            lat: formatCoordinate(selectedPinpoint.latitude, 'lat'),
+                            lng: formatCoordinate(selectedPinpoint.longitude, 'lon')
+                        }
+                    }
+                };
+                
+                sendMessageToParent(pinpointSelectedMessage);
+            } else {
+                // Enviar mensaje de deselección
+                const pinpointDeselectedMessage = {
+                    type: 'pinpointDeselected',
+                    data: null
+                };
+                
+                sendMessageToParent(pinpointDeselectedMessage);
             }
         }
         
@@ -1322,6 +1389,26 @@
             pinpoints.push(pinpointData);
             
             console.log(`📍 Pinpoint creado: ${planet.userData.name} (${formatCoordinate(latitude, 'lat')}, ${formatCoordinate(longitude, 'lon')})`);
+            
+            // Enviar mensaje de pinpoint creado al contenedor padre
+            const pinpointMessage = {
+                type: 'pinpointCreated',
+                data: {
+                    id: pinpointId,
+                    planetName: planet.userData.name,
+                    planetKey: getPlanetKey(planet),
+                    latitude: latitude,
+                    longitude: longitude,
+                    annotation: annotation,
+                    color: color,
+                    coordinates: {
+                        lat: formatCoordinate(latitude, 'lat'),
+                        lng: formatCoordinate(longitude, 'lon')
+                    }
+                }
+            };
+            
+            sendMessageToParent(pinpointMessage);
             
             return pinpointData;
         }
@@ -2050,11 +2137,29 @@
             // Solo almacenamos la referencia al planeta seleccionado
             selectedPlanet = planet;
             
-            // No mostramos ninguna información en la interfaz
             console.log(`Planeta seleccionado: ${planet.userData.name}`);
             
-            // Opcionalmente, podríamos mostrar el nombre en alguna parte de la interfaz
-            // o aplicar un efecto visual al planeta seleccionado
+            // Obtener la clave del planeta
+            const planetKey = getPlanetKey(planet);
+            
+            // Crear datos detallados del cuerpo celeste
+            const celestialBodyData = {
+                type: 'celestialBodySelected',
+                data: {
+                    name: planet.userData.name,
+                    key: planetKey,
+                    info: planet.userData.info,
+                    radius: planet.userData.radius,
+                    distance: planet.userData.distance,
+                    rotationSpeed: planet.userData.rotationSpeed,
+                    orbitSpeed: planet.userData.orbitSpeed,
+                    color: planet.userData.color,
+                    bodyType: planetKey === 'luna' ? 'satellite' : planetKey === 'sol' ? 'star' : 'planet'
+                }
+            };
+            
+            // Enviar mensaje al contenedor padre usando postMessage
+            sendMessageToParent(celestialBodyData);
         }
 
         function focusOnPlanet(planet) {
@@ -2069,6 +2174,24 @@
                 worldPosition.y + distance,
                 worldPosition.z + distance
             );
+            
+            // Enviar mensaje de enfoque al contenedor padre
+            const planetKey = getPlanetKey(planet);
+            const focusMessage = {
+                type: 'celestialBodyFocused',
+                data: {
+                    name: planet.userData.name,
+                    key: planetKey,
+                    action: 'focus',
+                    position: {
+                        x: worldPosition.x,
+                        y: worldPosition.y,
+                        z: worldPosition.z
+                    }
+                }
+            };
+            
+            sendMessageToParent(focusMessage);
             
             // Animar cámara hacia el planeta/satélite
             animateCamera(targetPosition, worldPosition);
@@ -2363,6 +2486,279 @@ function restartIntro() {
         window.addEventListener('load', () => {
             init();
         });
+
+        // Función helper para enviar mensajes con origen seguro
+        function sendMessageToParent(message) {
+            // Detectar el origen del contenedor padre
+            const parentOrigin = window.parent !== window ? document.referrer : window.location.origin;
+            
+            // Lista de orígenes permitidos
+            const ALLOWED_ORIGINS = [
+                'http://localhost:3000',
+                'http://localhost:5173',
+                'http://localhost:4173',
+                'http://127.0.0.1:5173',
+                'http://127.0.0.1:3000',
+                'https://mi-app.com'  // Cambiar por tu dominio en producción
+            ];
+            
+            // Determinar el origen target
+            let targetOrigin = '*';
+            
+            if (parentOrigin) {
+                const parentURL = new URL(parentOrigin);
+                const parentOriginOnly = `${parentURL.protocol}//${parentURL.host}`;
+                
+                // En desarrollo, permitir localhost/127.0.0.1
+                const isDevelopment = parentOriginOnly.includes('localhost') || parentOriginOnly.includes('127.0.0.1');
+                const isAllowedOrigin = ALLOWED_ORIGINS.includes(parentOriginOnly);
+                
+                if (isDevelopment || isAllowedOrigin) {
+                    targetOrigin = parentOriginOnly;
+                }
+            }
+            
+            // Enviar al padre si existe
+            if (window.parent !== window) {
+                window.parent.postMessage(message, targetOrigin);
+            }
+            
+            // También enviar al window actual para compatibilidad
+            window.postMessage(message, window.location.origin);
+        }
+
+        // Listener para recibir mensajes del contenedor padre (Vite app)
+        window.addEventListener('message', (event) => {
+            // Configurar orígenes permitidos según el entorno
+            const ALLOWED_ORIGINS = [
+                'http://localhost:3000',    // React dev server
+                'http://localhost:5173',    // Vite dev server
+                'http://localhost:4173',    // Vite preview
+                'http://127.0.0.1:5173',    // Vite alternativo
+                'http://127.0.0.1:3000',    // React alternativo
+                'https://mi-app.com',       // Producción (cambiar por tu dominio)
+                window.location.origin      // Mismo origen que el iframe
+            ];
+            
+            // En desarrollo, permitir cualquier localhost/127.0.0.1
+            const isDevelopment = event.origin.includes('localhost') || event.origin.includes('127.0.0.1');
+            const isAllowedOrigin = ALLOWED_ORIGINS.includes(event.origin);
+            
+            if (!isDevelopment && !isAllowedOrigin) {
+                console.warn('Mensaje rechazado desde origen no permitido:', event.origin);
+                return;
+            }
+            
+            const { type, data } = event.data;
+            
+            switch (type) {
+                case 'focusOnCelestialBody':
+                    if (data.key === 'luna' && moons.luna) {
+                        focusOnPlanet(moons.luna);
+                        selectPlanet(moons.luna);
+                    } else if (planets[data.key]) {
+                        focusOnPlanet(planets[data.key]);
+                        selectPlanet(planets[data.key]);
+                    }
+                    break;
+                    
+                case 'toggleOrbits':
+                    toggleOrbits();
+                    break;
+                    
+                case 'toggleLabels':
+                    toggleLabels();
+                    break;
+                    
+                case 'toggleAnimation':
+                    toggleAnimation();
+                    break;
+                    
+                case 'resetView':
+                    resetView();
+                    break;
+                    
+                case 'getSelectedCelestialBody':
+                    // Responder con información del cuerpo celeste seleccionado
+                    let selectedData = null;
+                    if (selectedPlanet) {
+                        const planetKey = getPlanetKey(selectedPlanet);
+                        selectedData = {
+                            name: selectedPlanet.userData.name,
+                            key: planetKey,
+                            info: selectedPlanet.userData.info,
+                            radius: selectedPlanet.userData.radius,
+                            distance: selectedPlanet.userData.distance,
+                            bodyType: planetKey === 'luna' ? 'satellite' : planetKey === 'sol' ? 'star' : 'planet'
+                        };
+                    }
+                    
+                    const response = {
+                        type: 'selectedCelestialBodyResponse',
+                        data: selectedData,
+                        requestId: data.requestId
+                    };
+                    
+                    if (window.parent !== window) {
+                        sendMessageToParent(response);
+                    }
+                    break;
+                    
+                case 'getAllCelestialBodies':
+                    const bodies = [];
+                    
+                    // Agregar planetas
+                    Object.keys(planets).forEach(key => {
+                        const planet = planets[key];
+                        bodies.push({
+                            name: planet.userData.name,
+                            key: key,
+                            bodyType: key === 'sol' ? 'star' : 'planet',
+                            info: planet.userData.info
+                        });
+                    });
+                    
+                    // Agregar satélites
+                    if (moons.luna) {
+                        bodies.push({
+                            name: moons.luna.userData.name,
+                            key: 'luna',
+                            bodyType: 'satellite',
+                            info: moons.luna.userData.info
+                        });
+                    }
+                    
+                    const bodiesResponse = {
+                        type: 'allCelestialBodiesResponse',
+                        data: bodies,
+                        requestId: data.requestId
+                    };
+                    
+                    if (window.parent !== window) {
+                        sendMessageToParent(bodiesResponse);
+                    }
+                    break;
+                    
+                case 'getAllPinpoints':
+                    // Responder con todos los pinpoints
+                    const allPinpoints = pinpoints.map(pinpoint => ({
+                        id: pinpoint.id,
+                        planetName: pinpoint.planet.userData.name,
+                        planetKey: pinpoint.planetKey,
+                        latitude: pinpoint.latitude,
+                        longitude: pinpoint.longitude,
+                        annotation: pinpoint.annotation,
+                        color: pinpoint.color,
+                        coordinates: {
+                            lat: formatCoordinate(pinpoint.latitude, 'lat'),
+                            lng: formatCoordinate(pinpoint.longitude, 'lon')
+                        }
+                    }));
+                    
+                    const pinpointsResponse = {
+                        type: 'allPinpointsResponse',
+                        data: allPinpoints,
+                        requestId: data.requestId
+                    };
+                    
+                    if (window.parent !== window) {
+                        sendMessageToParent(pinpointsResponse);
+                    }
+                    break;
+                    
+                case 'createPinpoint':
+                    // Crear pinpoint programáticamente
+                    if (data.planetKey && typeof data.latitude === 'number' && typeof data.longitude === 'number') {
+                        let targetPlanet = null;
+                        
+                        if (data.planetKey === 'luna' && moons.luna) {
+                            targetPlanet = moons.luna;
+                        } else if (planets[data.planetKey]) {
+                            targetPlanet = planets[data.planetKey];
+                        }
+                        
+                        if (targetPlanet) {
+                            createPinpoint(
+                                targetPlanet, 
+                                data.latitude, 
+                                data.longitude, 
+                                data.annotation || '', 
+                                data.color || 0xff4444
+                            );
+                        }
+                    }
+                    break;
+                    
+                case 'selectPinpoint':
+                    // Seleccionar pinpoint por ID
+                    const pinpoint = pinpoints.find(p => p.id === data.id);
+                    if (pinpoint) {
+                        selectPinpoint(pinpoint);
+                    }
+                    break;
+                    
+                case 'deletePinpoint':
+                    // Eliminar pinpoint por ID
+                    if (data.id !== undefined) {
+                        deletePinpoint(data.id);
+                    }
+                    break;
+            }
+        });
+
+        // API simplificada para compatibilidad directa (sin iframe)
+        window.SolarSystemAPI = {
+            // Enviar mensaje al iframe
+            sendMessage: function(type, data = {}) {
+                const message = { type, data };
+                // Para uso directo (sin iframe), usar el origin actual
+                window.postMessage(message, window.location.origin);
+            },
+            
+            // Métodos de conveniencia
+            focusOnCelestialBody: function(planetKey) {
+                this.sendMessage('focusOnCelestialBody', { key: planetKey });
+            },
+            
+            toggleOrbits: function() {
+                this.sendMessage('toggleOrbits');
+            },
+            
+            toggleLabels: function() {
+                this.sendMessage('toggleLabels');
+            },
+            
+            toggleAnimation: function() {
+                this.sendMessage('toggleAnimation');
+            },
+            
+            resetView: function() {
+                this.sendMessage('resetView');
+            },
+            
+            // Métodos para pinpoints/anotaciones
+            createPinpoint: function(planetKey, latitude, longitude, annotation, color) {
+                this.sendMessage('createPinpoint', { 
+                    planetKey, 
+                    latitude, 
+                    longitude, 
+                    annotation, 
+                    color 
+                });
+            },
+            
+            selectPinpoint: function(pinpointId) {
+                this.sendMessage('selectPinpoint', { id: pinpointId });
+            },
+            
+            deletePinpoint: function(pinpointId) {
+                this.sendMessage('deletePinpoint', { id: pinpointId });
+            },
+            
+            getAllPinpoints: function() {
+                this.sendMessage('getAllPinpoints');
+            }
+        };
     </script>
 </body>
 </html>
