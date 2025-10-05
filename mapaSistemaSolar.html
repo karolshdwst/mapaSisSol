@@ -161,6 +161,7 @@
             <p>• Scroll: Zoom</p>
             <p>• Click: Seleccionar planeta</p>
             <p>• Doble click: Enfocar planeta</p>
+            <p>• Click derecho: Agregar pin/anotación</p>
             <p>• Hover: Ver coordenadas en vivo</p>
             <p>• Tecla H: Ocultar/Mostrar controles</p>
             <p>• ◀: Panel de configuración</p>
@@ -181,6 +182,8 @@
             <button onclick="toggleOrbits()">🔄 Mostrar Órbitas</button>
             <button onclick="toggleLabels()">🏷️ Mostrar Nombres</button>
             <button onclick="toggleCoordinatesMode()">🎯 Coordenadas en Vivo</button>
+            <button onclick="showPinpointsInfo()">📍 Info de Pins</button>
+            <button onclick="clearAllPinpoints()">🗑️ Limpiar Pins</button>
             
             <label style="display: block; margin-top: 10px;">Velocidad:</label>
             <input type="range" id="speedSlider" min="0" max="2" value="0.25" step="0.01" style="width: 100%;">
@@ -1834,6 +1837,51 @@
                 controlsContainer.classList.add('hidden');
                 toggleButton.innerHTML = '▶';
                 toggleButton.title = 'Mostrar controles';
+            }
+        }
+
+        function showPinpointsInfo() {
+            if (pinpoints.length === 0) {
+                alert('📍 No hay pins creados.\n\n💡 Haz click derecho sobre cualquier planeta para agregar un pin con anotación.');
+                return;
+            }
+            
+            let info = `📍 PINS CREADOS (${pinpoints.length}):\n\n`;
+            pinpoints.forEach((pin, index) => {
+                const planetName = pin.planet.userData.name || 'Planeta desconocido';
+                const lat = formatCoordinate(pin.latitude, 'lat');
+                const lon = formatCoordinate(pin.longitude, 'lon');
+                info += `${index + 1}. ${planetName}\n`;
+                info += `   📍 ${lat}, ${lon}\n`;
+                info += `   💬 "${pin.annotation}"\n\n`;
+            });
+            
+            info += '💡 Tip: Haz click derecho en cualquier planeta para agregar más pins.';
+            alert(info);
+        }
+
+        function clearAllPinpoints() {
+            if (pinpoints.length === 0) {
+                alert('📍 No hay pins para limpiar.');
+                return;
+            }
+            
+            const confirmDelete = confirm(`🗑️ ¿Estás seguro de que quieres eliminar todos los pins (${pinpoints.length})?`);
+            if (confirmDelete) {
+                // Remover todos los pinpoints de la escena
+                pinpoints.forEach(pin => {
+                    if (pin.mesh && pin.mesh.parent) {
+                        pin.mesh.parent.remove(pin.mesh);
+                    }
+                });
+                
+                // Limpiar el array
+                pinpoints.length = 0;
+                pinpointIdCounter = 0;
+                selectedPinpoint = null;
+                
+                alert('🗑️ Todos los pins han sido eliminados.');
+                console.log('🗑️ Todos los pinpoints han sido eliminados');
             }
         }
 
