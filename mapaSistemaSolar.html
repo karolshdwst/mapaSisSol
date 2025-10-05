@@ -217,7 +217,7 @@
         let animationSpeed = 0.25;
         let isAnimating = true;
         let showOrbits = true;
-        let showLabels = true;
+        let showLabels = false; // Desactivado por defecto
         let orbits = [];
         let labels = [];
         let selectedPlanet = null;
@@ -450,6 +450,9 @@
                 }
             });
 
+            // Crear etiquetas de nombres
+            createLabels();
+
             // Crear órbitas
             createOrbits();
         }
@@ -591,6 +594,53 @@
                 }
             });
             scene.add(group);
+        }
+
+        // Crear etiquetas HTML para los nombres de los planetas
+        function createLabels() {
+            // Crear etiquetas para todos los planetas
+            Object.keys(planets).forEach(key => {
+                const planet = planets[key];
+                createPlanetLabel(planet, key);
+            });
+
+            // Crear etiqueta para la Luna
+            if (moons.luna) {
+                createPlanetLabel(moons.luna, 'luna');
+            }
+        }
+
+        function createPlanetLabel(celestialBody, key) {
+            const label = document.createElement('div');
+            label.className = 'planet-label';
+            label.style.cssText = `
+                position: absolute;
+                background: rgba(0, 0, 0, 0.7);
+                color: var(--space-cyan, #00ffff);
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                font-weight: bold;
+                border: 1px solid var(--space-cyan, #00ffff);
+                pointer-events: none;
+                z-index: 1003;
+                text-shadow: 0 0 5px var(--space-cyan, #00ffff);
+                box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+                transform: translate(-50%, -50%);
+                white-space: nowrap;
+                display: ${showLabels ? 'block' : 'none'};
+            `;
+            label.textContent = celestialBody.userData.name;
+            
+            // Agregar al DOM
+            document.body.appendChild(label);
+            
+            // Guardar referencia en el array de etiquetas
+            labels.push({
+                element: label,
+                celestialBody: celestialBody,
+                key: key
+            });
         }
 
         function createLights() {
@@ -1345,6 +1395,45 @@
             });
         }
 
+        // Actualizar posiciones de etiquetas de planetas en tiempo real
+        function updatePlanetLabels() {
+            labels.forEach(labelData => {
+                const celestialBody = labelData.celestialBody;
+                
+                // Obtener posición mundial del cuerpo celeste
+                const worldPosition = new THREE.Vector3();
+                celestialBody.getWorldPosition(worldPosition);
+                
+                // Proyectar a coordenadas de pantalla
+                const screenPosition = worldPosition.clone().project(camera);
+                
+                // Calcular posición en pantalla
+                const x = (screenPosition.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-screenPosition.y * 0.5 + 0.5) * window.innerHeight;
+                
+                // Siempre actualizar la posición
+                labelData.element.style.left = x + 'px';
+                labelData.element.style.top = (y - celestialBody.userData.radius * 15) + 'px';
+                
+                // Verificar si está detrás de la cámara
+                if (screenPosition.z > 1) {
+                    labelData.element.style.display = 'none';
+                    return;
+                }
+                
+                // Calcular distancia para mostrar/ocultar según proximidad
+                const distance = camera.position.distanceTo(worldPosition);
+                const maxDistance = celestialBody.userData.radius * 100;
+                
+                // Mostrar solo si showLabels está activado, está visible y no demasiado lejos
+                if (showLabels && distance < maxDistance) {
+                    labelData.element.style.display = 'block';
+                } else {
+                    labelData.element.style.display = 'none';
+                }
+            });
+        }
+
         function formatCoordinate(value, type) {
             const abs = Math.abs(value);
             if (type === 'lat') {
@@ -2033,7 +2122,14 @@
 
         function toggleLabels() {
             showLabels = !showLabels;
-            // Implementar etiquetas si es necesario
+            labels.forEach(labelData => {
+                labelData.element.style.display = showLabels ? 'block' : 'none';
+            });
+            
+            // Forzar actualización inmediata de posiciones cuando se activan
+            if (showLabels) {
+                updatePlanetLabels();
+            }
         }
 
         function toggleCoordinatesMode() {
@@ -2238,6 +2334,7 @@
         
         animateAtmospheres();
         updatePinpointLabels();
+        updatePlanetLabels();
     }
     
     if (!introAnimation.active) {
