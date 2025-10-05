@@ -4,38 +4,26 @@
     <meta charset="utf-8">
     <title>Sistema Solar 3D - Explorador Interactivo</title>
     <style>
-        body { 
-            margin: 0; 
-            padding: 0; 
-            overflow: hidden; 
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
             font-family: Arial, sans-serif;
-            background: #000;
+            background: var(--space-background, #0a0a12);
         }
-        
+
         #container {
             position: relative;
             width: 100vw;
             height: 100vh;
         }
-        
-        #info {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 15px;
-            border-radius: 8px;
-            z-index: 1000;
-            max-width: 300px;
-        }
-        
-        #info h2 { 
-            margin: 0 0 10px 0; 
-            color: #4af; 
+
+        #info h2 {
+            margin: 0 0 10px 0;
+            color: var(--space-cyan, #00ffff);
             font-size: 18px;
         }
-        
+
         #controls-container {
             position: absolute;
             top: 10px;
@@ -44,47 +32,55 @@
             transform: translateX(0);
             transition: transform 0.3s ease;
         }
-        
+
         #controls-container.hidden {
             transform: translateX(calc(100% - 30px));
         }
-        
+
         #controls {
-            background: rgba(0,0,0,0.8);
-            color: white;
+            background: var(--space-surface, #1a1a2e);
+            color: var(--space-text, #e0e0ff);
             padding: 15px;
             border-radius: 8px 0 0 8px;
-            border: 1px solid #4af;
+            border: 1px solid var(--space-cyan, #242446);
             border-right: none;
             width: 200px;
+            box-shadow: 0 2px 12px 0 rgba(0,0,0,0.25);
+            background: rgba(26,26,46,0.65);
+            backdrop-filter: blur(14px) saturate(160%);
+            -webkit-backdrop-filter: blur(14px) saturate(160%);
+            /* Fallback visual si no hay soporte de blur */
+            box-shadow: 0 4px 32px 0 rgba(0,0,0,0.35);
         }
-        
+
         #controls button, #controls select {
             width: 100%;
             padding: 8px;
             margin: 5px 0;
-            background: #222;
-            color: white;
-            border: 1px solid #4af;
+            background: var(--space-surface-light, #242446);
+            color: var(--space-text, #e0e0ff);
+            border: 1px solid var(--space-border, #2d2d54);
             border-radius: 4px;
             cursor: pointer;
+            transition: background 0.2s, color 0.2s, border 0.2s;
         }
-        
-        #controls button:hover {
-            background: #4af;
-            color: black;
+
+        #controls button:hover, #controls select:focus {
+            background: var(--space-cyan, #00ffff);
+            color: var(--space-background, #0a0a12);
+            border: 1px solid var(--space-cyan, #00ffff);
         }
-        
+
         #toggle-controls {
             position: absolute;
             top: 50%;
             left: -30px;
             transform: translateY(-50%);
-            background: rgba(0,0,0,0.8);
-            color: white;
+            background: var(--space-surface, #1a1a2e);
+            color: var(--space-text, #e0e0ff);
             padding: 8px;
             border-radius: 8px 0 0 8px;
-            border: 1px solid #4af;
+            border: 1px solid var(--space-cyan, #00ffff);
             border-right: none;
             cursor: pointer;
             font-size: 14px;
@@ -93,42 +89,53 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.3s ease;
+            transition: background 0.3s, color 0.3s;
             z-index: 1001;
+            background: rgba(26,26,46,0.65);
+            backdrop-filter: blur(14px) saturate(160%);
+            -webkit-backdrop-filter: blur(14px) saturate(160%);
+            /* Fallback visual si no hay soporte de blur */
+            box-shadow: 0 4px 32px 0 rgba(0,0,0,0.35);
         }
-        
+
         #toggle-controls:hover {
-            background: #4af;
-            color: black;
+            background: var(--space-cyan, #00ffff);
+            color: var(--space-background, #0a0a12);
         }
-        
+
         .loading {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            color: white;
+            color: var(--space-cyan, #00ffff);
             font-size: 18px;
             z-index: 1001;
+            text-shadow: 0 0 8px var(--space-cyan, #00ffff);
         }
-        
+
         #coordinates-display {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.9);
-            color: #4af;
+            background: var(--space-surface, #1a1a2e);
+            color: var(--space-cyan, #00ffff);
             padding: 8px 12px;
             border-radius: 6px;
             z-index: 1002;
             font-family: monospace;
             font-size: 14px;
-            border: 1px solid #4af;
-            box-shadow: 0 0 10px rgba(68,170,255,0.3);
+            border: 1px solid var(--space-cyan, #00ffff);
+            box-shadow: 0 0 10px var(--space-cyan, #00ffff33);
             display: none;
             pointer-events: none;
             white-space: nowrap;
+            background: rgba(26,26,46,0.65);
+            backdrop-filter: blur(14px) saturate(160%);
+            -webkit-backdrop-filter: blur(14px) saturate(160%);
+            /* Fallback visual si no hay soporte de blur */
+            box-shadow: 0 4px 32px 0 rgba(0,0,0,0.35);
         }
     </style>
 </head>
@@ -150,7 +157,7 @@
             </div>
             
             <div id="controls">
-            <h3 style="margin: 0 0 10px 0; color: #4af;">Controles</h3>
+            <!--<h3 style="margin: 0 0 10px 0; color: #4af;">Controles</h3>-->
             
             <button onclick="resetView()">Vista General</button>
             <button onclick="toggleAnimation()">Pausar/Reanudar</button>
